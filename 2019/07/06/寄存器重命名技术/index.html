@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="en">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+  <meta name="google-site-verification" content="R3yZXoZInXEcrZ8Q7MFAEsLw_a9ISZb3LGjOEmfjoB8">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/safari-pinned-tab.svg?v=5.1.4" color="#222">
+
+
+
+  <meta name="msapplication-config" content="/site.webmanifest">
+
+
+
+  <meta name="keywords" content="Computer Architecture,Processor,Out-of-order Architecture,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="在计算机体系结构当中，寄存器重命名是一种技术来消除数据依赖的方法，通过重用一组连续的指令所使用的寄存器，它们之间不存在数据依赖。通过消除这些负面的数据依赖，可以揭示在指令流中更多的指令级别并行执行的相关内容，从而可以被多种技术作为补充以获得更好的性能，如超标量以及乱序执行处理器。 问题描述在寄存器机中，程序由操作数据的指令构成。指令必须对这些值命名来分辨它们。一种典型的指令会说：将X和Y的值相加并">
+<meta name="keywords" content="Computer Architecture,Processor,Out-of-order Architecture">
+<meta property="og:type" content="article">
+<meta property="og:title" content="寄存器重命名技术">
+<meta property="og:url" content="http://www.sunnychen.top/2019/07/06/寄存器重命名技术/index.html">
+<meta property="og:site_name" content="SunnyChen的小窝">
+<meta property="og:description" content="在计算机体系结构当中，寄存器重命名是一种技术来消除数据依赖的方法，通过重用一组连续的指令所使用的寄存器，它们之间不存在数据依赖。通过消除这些负面的数据依赖，可以揭示在指令流中更多的指令级别并行执行的相关内容，从而可以被多种技术作为补充以获得更好的性能，如超标量以及乱序执行处理器。 问题描述在寄存器机中，程序由操作数据的指令构成。指令必须对这些值命名来分辨它们。一种典型的指令会说：将X和Y的值相加并">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2019-07-06T13:13:40.223Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="寄存器重命名技术">
+<meta name="twitter:description" content="在计算机体系结构当中，寄存器重命名是一种技术来消除数据依赖的方法，通过重用一组连续的指令所使用的寄存器，它们之间不存在数据依赖。通过消除这些负面的数据依赖，可以揭示在指令流中更多的指令级别并行执行的相关内容，从而可以被多种技术作为补充以获得更好的性能，如超标量以及乱序执行处理器。 问题描述在寄存器机中，程序由操作数据的指令构成。指令必须对这些值命名来分辨它们。一种典型的指令会说：将X和Y的值相加并">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://www.sunnychen.top/2019/07/06/寄存器重命名技术/">
+
+
+
+
+
+  <title>寄存器重命名技术 | SunnyChen的小窝</title>
+  
+
+
+
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+            (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+          m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+  ga('create', 'UA-143509756-1', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+  <script type="text/javascript">
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?1faf1fe5808983eec77de232d43d47a4";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="en">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">SunnyChen的小窝</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">シンプルは最高です</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            About
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            Tags
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            Categories
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br>
+            
+            Search
+          </a>
+        </li>
+      
+    </ul>
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off" placeholder="Searching..." spellcheck="false" type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://www.sunnychen.top/2019/07/06/寄存器重命名技术/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="SunnyChen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="SunnyChen的小窝">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">寄存器重命名技术</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2019-07-06T21:13:03+08:00">
+                2019-07-06
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">In</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Architecture/" itemprop="url" rel="index">
+                    <span itemprop="name">Computer Architecture</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            <!--noindex-->
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/07/06/寄存器重命名技术/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count hc-comment-count" data-xid="2019/07/06/寄存器重命名技术/" itemprop="commentsCount"></span>
+                </a>
+              </span>
+              <!--/noindex-->
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>在计算机体系结构当中，寄存器重命名是一种技术来消除数据依赖的方法，通过重用一组连续的指令所使用的寄存器，它们之间不存在数据依赖。通过消除这些负面的数据依赖，可以揭示在指令流中更多的指令级别并行执行的相关内容，从而可以被多种技术作为补充以获得更好的性能，如超标量以及乱序执行处理器。</p>
+<h2 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h2><p>在寄存器机中，程序由操作数据的指令构成。指令必须对这些值命名来分辨它们。一种典型的指令会说：将X和Y的值相加并且将结果放在Z中。在这条指令当中，X，Y，和Z都是存储位置的名字。</p>
+<p>为了获得紧凑的指令编码，绝大多数的处理器指令集拥有一个小的特殊存储位置的集合可以被直接命名（通用寄存器）。比如，在x86指令集架构当中，有8个整型寄存器，x86-64有16个，大多数的RISC机有32个，IA-64有128个。在小型的处理器当中，这些寄存器一般组合寄存器组的机构。</p>
+<p>不同的指令可能会需要执行不同的时间。比方说，一个处理器可能能够在一个从主存中读取数据的指令所需要的时间里，执行上百条其他的指令。因此，这些执行速度更快的指令会在load指令执行完成前先执行完毕，这时候指令真正执行的顺序就会和原来的程序有出入。乱序执行已经在现在的高性能CPU上使用了。</p>
+<p>考虑在一个乱序执行的CPU上执行下列指令序列：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">01  R1 = M[1024]</span><br><span class="line">02  R1 = R1 + 2</span><br><span class="line">03  M[1032] = R1</span><br><span class="line">04  R1 = M[2048]</span><br><span class="line">05  R1 = R1 + 4</span><br><span class="line">06  M[2056] = R1</span><br></pre></td></tr></table></figure>
+
+<p>指令4,5,6与指令1,2,3是相互独立的，但是指令4不能在指令3完成前先完成，否则指令3会写入错误的值。这样的约束可以通过重命名寄存器的名字来消除：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">01  R1 = M[1024]        04  R2 = M[2048]</span><br><span class="line">02  R1 = R1 + 2         05  R2 = R2 + 4</span><br><span class="line">03  M[1032] = R1        06  M[2056] = R2</span><br></pre></td></tr></table></figure>
+
+<p>现在，指令4,5,6可以与指令1,2,3并行执行，因此这个程序现在可以执行的更快了。</p>
+<p>如果可能的话，编译器会检测不同的指令然后尝试去给它们分配不同的寄存器。然而，这里只有有限的寄存器名字可以在汇编代码中使用。很多高性能的CPU有更多的物理寄存器可以在指令集中被直接命名，因此在硬件中进行重命名寄存器操作可以获得额外的并行性。</p>
+<h2 id="数据冒险"><a href="#数据冒险" class="headerlink" title="数据冒险"></a>数据冒险</h2><p>数据冒险有三种：RAW、WAW以及WAR（分别是什么意思不再赘述，可以参考RISC-V构建相关笔记参考或者直接google即可），下面阐述的是另外一种表述的方式：</p>
+<ul>
+<li><p>写后读（Read-after-write，RAW）：从寄存器或者内存中读取的数据，必须是先前最后一个写指令写入的数据。这种依赖也称为直接依赖或者流依赖（或者真依赖？，原文：ture dependency or flow dependency）。这种依赖（冒险）的解决方法可以通过使指令按照程序顺序来执行。</p>
+</li>
+<li><p>写后写（Write-after-write，WAW）：连续写入同一个寄存器，寄存器的最终结果必须等于最后一次写入的值。这种依赖也称为输出依赖。这种依赖（冒险）的解决方法可以通过取消（无效）先前的写指令来解决。</p>
+</li>
+<li><p>读后写（Write-after-read，WAR）：读操作获得的数据是此前写入的，而不是此后写操作的结果。这种依赖也称为假依赖（false dependency），可以通过重命名来解决。WAR依赖也可以被称为反依赖（anti-dependencies）。</p>
+</li>
+</ul>
+<p>不同于在所有的读完成之前都将写操作进行延时，目标存储地址的两个拷贝可以被维护：旧的以及新的拷贝。这样，在写之前的读就可以提供旧的值，而在写之后的读就可以提供新的值。这样做，假依赖被大破，并且额外的乱序执行的机会得以创造出来。当所有的读取都已经完成了，旧的值就可以被丢弃。这是寄存器重命名的必要概念。</p>
+<p>所有读取以及写入的位置都可以被重命名。最常见的是重命名通用寄存器以及浮点寄存器，标志以及状态寄存器甚至独立的状态位也可以被重命名。</p>
+<p>存储器重命名同样可行，虽然没有寄存器重命名那么常见。在Transmeta Cursoe的处理器中门存储缓存可以使用存储器重命名技术。</p>
+<p>如果程序可以不立即重用同一个寄存器，那么就没必要进行寄存器重命名了。一些指令集提供大量的寄存器就是为了这个目的。但是这种做法也有它的局限性：</p>
+<ul>
+<li><p>编译器很难完全避免在不导致程序尺寸大增的同时避免重用寄存器。在循环当中，连续的迭代执行需要复制循环体的代码以使用不同的寄存器，这种技术叫做循环展开。</p>
+</li>
+<li><p>大量的寄存器需要在指令中使用更多的比特位来指定寄存器，这样也会增大代码量。</p>
+</li>
+<li><p>很多指令集在此之前只有比较少的寄存器，同时在新的架构中实现也不能扩大寄存器的数量（没有向后兼容的特性）。</p>
+</li>
+</ul>
+<p>代码量的增加是很重要的，因为当程序代码变大之后，指令缓存未命中的概率会增大，处理器停滞以等待新指令的时间会变多。</p>
+<h2 id="体系结构寄存器与物理寄存器"><a href="#体系结构寄存器与物理寄存器" class="headerlink" title="体系结构寄存器与物理寄存器"></a>体系结构寄存器与物理寄存器</h2><p>很多的机器语言程序所指定的用于读写的寄存器都受限于在指令集中指定的寄存器。举例来说，在Alpha当中声明了32个整数寄存器，每一个都是64位宽，以及32个浮点寄存器，每一个也是64位宽。这些是体系结构寄存器。使用Alpha指令集写的程序指令会指定读写这64个寄存器。</p>
+<p>Alpha 21264（1996年由DEC设计的RISC处理器），实现了Alpha指令集，且物理上拥有80个整型寄存器以及72个浮点寄存器。（事实上，还有更多的寄存器，只是这些寄存器都不能用于寄存器命名操作）</p>
+<p>接下来就描述两种寄存器命名的类型，可以利用为数据提供执行的电路来进行区别。</p>
+<p>在所有的重命名的策略当中，机器会将体系结构寄存器根据指令流转换成标签。体系结构寄存器可能会使用3到5个比特位来进行描述，而标签通常使用6到8个比特位来进行描述。重命名的部件必须拥有读取的端口对应每个时钟周期中重命名的每个指令的每个输入，同时还必须拥有一个写入的端口对应每个时钟周期中重命名的每个指令的每个输出。因为寄存器组的大小一般来说都会以读写端口的个数平方增长，而重命名的器件一般会在物理上要更大并且拥有更大的功率。</p>
+<ol>
+<li><p>在标签索引的寄存器组类型（tag-indexed register file）中，存在一个大的寄存器组给数值存放，所有的寄存器都可以打上标签。举例来说，如果机器拥有80个物理寄存器，那么这里应该使用7位的标签。在这个例子中，有48个可能的标签值没有被使用。</p>
+<p> 在这种类型当中，当一个指令发射给一个执行单元的时候，这个源寄存器的标签会发送给物理的寄存器组，这些标签对应的值会被发送给执行单元。</p>
+</li>
+<li><p>在保留站（reservation station）的类型当中，有很多小的相关的寄存器组，通常在每个执行单元的每个输入都有一个。发射队列中的每条指令的每个操作数对应着这个物理寄存器堆的一个存储位置。</p>
+<p> 在这种类型当中，当一条指令发射给一个执行单元的时候，执行单元对应的寄存器堆的相应条目被读出发送给执行单元。</p>
+</li>
+</ol>
+<p><strong>体系结构寄存器组与隐退寄存器组</strong>（Retirement Register File，RRF）</p>
+<p>存储了被提交了的寄存器状态的寄存器组。存储了被提交的体系寄存器的状态。通过逻辑寄存器的号来查询这个寄存器组。重排序缓冲区（reorder buffer）中的引退（retired）或者说提交（committed）指令，把结果写入这个寄存器组。</p>
+<p><strong>远期寄存器组</strong>（Future File）</p>
+<p>处理器对分支做预测执行的寄存器的状态保存于此。使用逻辑寄存器号来索引访问。在Intel P6微体系结构，称之为Active Register File。</p>
+<p><strong>历史缓冲区</strong>（History Buffer）</p>
+<p>一般来说和远期寄存器组一起使用。包含已经被覆写的寄存器的旧的值。如果分支预测失败，使用历史缓冲区中的数据来恢复流水线。</p>
+<p><strong>重排缓冲区</strong>（Reorder Buffer，ROB）</p>
+<p>为了实现指令的顺序提交，处理器内部使用了一个Buffer。如果在该缓冲区中排在一条指令之前的所有都已经提交，没有处于未提交状态的（in flight），则该指令也被提交。因此重排缓冲区是在远期寄存器组之后，体系结构寄存器组之前。提交的指令的结果写入体系寄存器堆。</p>
+<p>重排缓冲区可以是data-less或者是data-ful的。</p>
+<p>在Willamette的ROB结构当中，ROB的每个项都指向一个物理寄存器组（Physical Register File，PRF）中的寄存器，同时还包括一些簿记数据。这是第一种乱序设计，由Andy Glew在Illinois使用HaRRM完成。</p>
+<p>在Intel P6的ROB结构当中，ROB的每个项都包含数据，而没有分离的PRF结构。来自ROB的数据在提交后会被复制到RRF。</p>
+<h2 id="标签索引寄存器组的实现细节"><a href="#标签索引寄存器组的实现细节" class="headerlink" title="标签索引寄存器组的实现细节"></a>标签索引寄存器组的实现细节</h2><p>这种重命名的方式在MIPS R10000（实现MIPS IV指令集的RISC处理器，在1996年由MIPS科技有限公司设计）、Alpha 21264以及AMD Athlon（AMD在1999年中期到2005年生产的x86处理器）的浮点运算部件中使用。</p>
+<p>在重命名的阶段当中，每个被引用的体系结构寄存器（不论是读还是写）按其体系结构索引号到重命名文件（remap file）中查找。这个文件会返回一个标签以及一个准备位。如果有一个队列中的指令要写这个寄存器，且还没有完成，那么这个标签还没准备好，还不能被使用。</p>
+<ul>
+<li><p>对于读取操作来说，这个标签将会取代在指令中的体系结构寄存器，也就是说，写后读的数据相关必须恪守，读操作只有在该标签的ready位是就绪的时候才能执行。</p>
+</li>
+<li><p>对于写入操作来说，从一个FIFO的空闲标签队列中取出一个标签，然后一个新的映射条目写入重命名文件，未来的读取该体系结构寄存器的指令将指向这个新的tag。在这种情况下，可以发现，WAW是一种寄存器数据的假依赖，用这种重命名的方法就可以去掉假依赖。因为以前为该体系结构寄存器分配的物理寄存器被保存在指令的重排缓冲区，根据写入的tag（此时tag未就绪，写操作尚未执行），由于重拍缓冲区是一个FIFO的队列，根据指令的阶码顺序安排指令引退，只将最后一条有效的写的指令执行即可。</p>
+</li>
+</ul>
+<p>操作数寄存器被重命名后的指令将被放入不同的发射队列（issue queues）。这些指令等待所需的各种资源（源操作数对应的物理寄存器）就绪。</p>
+<p>当发射队列中的某条指令的素有操作数都是就绪的，这条指令就是发射就绪。在每个周期，发射队列挑选出一些就绪的指令，发射到功能单元。未就绪的指令仍然留在发射队列中。这种从发射队列中无序删除指令，使得发射队列的电路实现占用面积大、功耗高。</p>
+<p>被发射的指令读取源操作数的tag索引在物理寄存器堆中对应的物理寄存器（忽略掉刚刚公告过的操作数），然后开始执行指令。</p>
+<p>指令执行结果写入目的操作数的tag索引在物理寄存器堆对应的物理寄存器，同时公告给每个功能单元输入端的旁路网络（bypass network，即把执行结果“直通”给流水线各个步骤的中间缓冲）。</p>
+<p>写寄存器的指令在引退时，把被写的目的操作数寄存器使用过的上一个tag放入“空闲tag队列”中，使得它可以被其它被解码的指令重用。而该指令的目的操作数寄存器当前对应的tag仍然被占用，因为后面可能还有指令需要读取当前tag对应的物理寄存器的内容。</p>
+<p>一个异常（将导致中断）或者分支预测失败导致了重命名文件退回到最后一条有效的指令的重命名状态，通过组合状态的快照（在历史缓冲区）与重排缓冲区中等待顺序引退的指令的以前用过的tags。这种机制可以实现恢复任意时刻的重命名状态。</p>
+<h2 id="保留站的详细实现"><a href="#保留站的详细实现" class="headerlink" title="保留站的详细实现"></a>保留站的详细实现</h2><p>保留站的实现在AMD K7以及K8的整数执行部分中使用。</p>
+<p>在重命名阶段中，每个体系结构寄存器会从远期寄存器组以及重命名文件中查找对应的物理寄存器。如果没有写指令还没有完成写入该物理寄存器，则说明这个源操作数已经就绪。当这条指令被放入发射队列，从远期寄存器堆相应的物理寄存器读出内容放入保留站中对应的条目。指令对目的寄存器的写入，在重命名文件中的产生了一个新的、未就绪的tag。tag数通常是按照指令的顺序分配，因此不需要空闲tag先进先出队列。</p>
+<p>如同tag索引模式，发射队列中的未就绪操作数等待匹配的tag公告。但不同于tag索引模式，tag的匹配导致对应的内容数据写入发射队列对应的保留站的条目。</p>
+<p>被发射的指令从保留站读取它的操作数，忽略掉那些刚刚公告过的操作数，然后开始执行。保留站寄存器堆通常很小，可能只有8个条目。</p>
+<p>指令执行结果写入重排缓冲区，以及保留站（如果发射队列有匹配的tags），以及远期寄存器堆。</p>
+<p>指令引退时，复制重排序缓冲区中的值到体系结构寄存器堆。体系结构寄存器堆用于从异常或者分支预测失败时恢复。</p>
+<p>在指令引退时可以识别出异常与分支预测失败，引起体系结构寄存器堆覆盖掉远期寄存器堆的内容，并标记重命名文件中所有寄存器都是就绪。通常，没有办法为一条处于解码与引退之间的指令恢复远期寄存器堆，因此通常没有办法在更早期为分支预测失败做恢复工作。</p>
+<h2 id="比较两种策略"><a href="#比较两种策略" class="headerlink" title="比较两种策略"></a>比较两种策略</h2><p>在两种策略中，指令都是有序的插入发射队列当中，但是以乱序移除。需要考虑的是，当多条指令都可以发射的时候，需要一个或者多个优先级的编码方式。</p>
+<p>保留站具有更好的延迟性能，因为保留站直接获取数据，而不是根据标签再获取数据。</p>
+<p>保留站具有更好的从指令发射到执行的延迟性能。因为每个本地寄存器堆远小于那种大型的用tag索引的中央寄存器堆。tag产生与异常处理也更为简单。</p>
+<p>与tag索引的简单的寄存器堆相比，保留站的物理寄存器堆的总规模更大，功耗更大，更为复杂。更糟糕的是，每个保留站的每个条目可以被每条结果总线写入。例如，每个功能单元具有8条发射队列条目的处理器，相比于tag索引的模式有9倍的旁路网络，结果直通（forwarding）需要更大的功耗与面积。</p>
+<p>保留站模式在4个位置（远期寄存器堆，保留站，重排序区、系统结构寄存器堆）保存结果值。而tag索引模式只需要在物理寄存器堆保存结果值。由于结果值来自功能单元，保留站模式必须公告结果到许多存储位置，用掉了非常多的功耗、面积、时间。如果处理器具有非常精确的分支预测、非常关注执行延迟，保留站也是个很好的选择。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Computer-Architecture/" rel="tag"># Computer Architecture</a>
+          
+            <a href="/tags/Processor/" rel="tag"># Processor</a>
+          
+            <a href="/tags/Out-of-order-Architecture/" rel="tag"># Out-of-order Architecture</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/07/06/Tomasulo算法/" rel="next" title="Tomasulo算法">
+                <i class="fa fa-chevron-left"></i> Tomasulo算法
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/07/06/RISC-V异常与中断机制概述/" rel="prev" title="RISC-V异常与中断机制概述">
+                RISC-V异常与中断机制概述 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="hypercomments_widget"></div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpg" alt="SunnyChen">
+            
+              <p class="site-author-name" itemprop="name">SunnyChen</p>
+              <p class="site-description motion-element" itemprop="description">Silent place</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-name">categories</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-name">tags</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+            <div class="links-of-author motion-element">
+                
+                  <span class="links-of-author-item">
+                    <a href="https://github.com/Groupsun" target="_blank" title="GitHub">
+                      
+                        <i class="fa fa-fw fa-github"></i>GitHub</a>
+                  </span>
+                
+                  <span class="links-of-author-item">
+                    <a href="mailto:cptgroupsun@gmail.com" target="_blank" title="E-Mail">
+                      
+                        <i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                  </span>
+                
+                  <span class="links-of-author-item">
+                    <a href="https://twitter.com/CptSunnyChen" target="_blank" title="Twitter">
+                      
+                        <i class="fa fa-fw fa-twitter"></i>Twitter</a>
+                  </span>
+                
+                  <span class="links-of-author-item">
+                    <a href="https://www.facebook.com/profile.php?id=100013729483257" target="_blank" title="FB Page">
+                      
+                        <i class="fa fa-fw fa-facebook"></i>FB Page</a>
+                  </span>
+                
+            </div>
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#问题描述"><span class="nav-number">1.</span> <span class="nav-text">问题描述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据冒险"><span class="nav-number">2.</span> <span class="nav-text">数据冒险</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#体系结构寄存器与物理寄存器"><span class="nav-number">3.</span> <span class="nav-text">体系结构寄存器与物理寄存器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#标签索引寄存器组的实现细节"><span class="nav-number">4.</span> <span class="nav-text">标签索引寄存器组的实现细节</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#保留站的详细实现"><span class="nav-number">5.</span> <span class="nav-text">保留站的详细实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#比较两种策略"><span class="nav-number">6.</span> <span class="nav-text">比较两种策略</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; 2018 &mdash; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">SunnyChen</span>
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a></div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+		<script type="text/javascript">
+		_hcwp = window._hcwp || [];
+
+		_hcwp.push({widget:"Bloggerstream", widget_id: 106070, selector:".hc-comment-count", label: "{\%COUNT%\}" });
+
+		
+		_hcwp.push({widget:"Stream", widget_id: 106070, xid: "2019/07/06/寄存器重命名技术/"});
+		
+
+		(function() {
+		if("HC_LOAD_INIT" in window)return;
+		HC_LOAD_INIT = true;
+		var lang = (navigator.language || navigator.systemLanguage || navigator.userLanguage || "en").substr(0, 2).toLowerCase();
+		var hcc = document.createElement("script"); hcc.type = "text/javascript"; hcc.async = true;
+		hcc.src = ("https:" == document.location.protocol ? "https" : "http")+"://w.hypercomments.com/widget/hc/106070/"+lang+"/widget.js";
+		var s = document.getElementsByTagName("script")[0];
+		s.parentNode.insertBefore(hcc, s.nextSibling);
+		})();
+		</script>
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  <script type="text/javascript">
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url);
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+</body>
+</html>

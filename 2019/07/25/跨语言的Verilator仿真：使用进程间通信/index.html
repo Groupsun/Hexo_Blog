@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="en">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+  <meta name="google-site-verification" content="R3yZXoZInXEcrZ8Q7MFAEsLw_a9ISZb3LGjOEmfjoB8">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/safari-pinned-tab.svg?v=5.1.4" color="#222">
+
+
+
+  <meta name="msapplication-config" content="/site.webmanifest">
+
+
+
+  <meta name="keywords" content="Verilator,Simulation,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="最近在研究Chisel和高层次的硬件开发框架的项目，发现做仿真这块的方法也是五花八门。有些项目可能自己做了一套仿真的框架，比如PyMTL就自己设计了一套仿真的方案，是直接使用Python来实现的，其阐述的目的主要就是为了解决Methodology Gap。最受关注的Chisel的仿真则是在框架的后端直接调用Verilator来进行仿真。不容置疑，目前来说开源仿真的工具中速度最快性能最好的就是Ver">
+<meta name="keywords" content="Verilator,Simulation">
+<meta property="og:type" content="article">
+<meta property="og:title" content="跨语言的Verilator仿真：使用进程间通信">
+<meta property="og:url" content="http://www.sunnychen.top/2019/07/25/跨语言的Verilator仿真：使用进程间通信/index.html">
+<meta property="og:site_name" content="SunnyChen的小窝">
+<meta property="og:description" content="最近在研究Chisel和高层次的硬件开发框架的项目，发现做仿真这块的方法也是五花八门。有些项目可能自己做了一套仿真的框架，比如PyMTL就自己设计了一套仿真的方案，是直接使用Python来实现的，其阐述的目的主要就是为了解决Methodology Gap。最受关注的Chisel的仿真则是在框架的后端直接调用Verilator来进行仿真。不容置疑，目前来说开源仿真的工具中速度最快性能最好的就是Ver">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2019-07-30T09:52:17.103Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="跨语言的Verilator仿真：使用进程间通信">
+<meta name="twitter:description" content="最近在研究Chisel和高层次的硬件开发框架的项目，发现做仿真这块的方法也是五花八门。有些项目可能自己做了一套仿真的框架，比如PyMTL就自己设计了一套仿真的方案，是直接使用Python来实现的，其阐述的目的主要就是为了解决Methodology Gap。最受关注的Chisel的仿真则是在框架的后端直接调用Verilator来进行仿真。不容置疑，目前来说开源仿真的工具中速度最快性能最好的就是Ver">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://www.sunnychen.top/2019/07/25/跨语言的Verilator仿真：使用进程间通信/">
+
+
+
+
+
+  <title>跨语言的Verilator仿真：使用进程间通信 | SunnyChen的小窝</title>
+  
+
+
+
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+            (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+          m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+  ga('create', 'UA-143509756-1', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+  <script type="text/javascript">
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?1faf1fe5808983eec77de232d43d47a4";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="en">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">SunnyChen的小窝</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">シンプルは最高です</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            About
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            Tags
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            Categories
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br>
+            
+            Search
+          </a>
+        </li>
+      
+    </ul>
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off" placeholder="Searching..." spellcheck="false" type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://www.sunnychen.top/2019/07/25/跨语言的Verilator仿真：使用进程间通信/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="SunnyChen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="SunnyChen的小窝">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">跨语言的Verilator仿真：使用进程间通信</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2019-07-25T18:00:21+08:00">
+                2019-07-25
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">In</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Aid-Design/" itemprop="url" rel="index">
+                    <span itemprop="name">Computer-Aid Design</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            <!--noindex-->
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/07/25/跨语言的Verilator仿真：使用进程间通信/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count hc-comment-count" data-xid="2019/07/25/跨语言的Verilator仿真：使用进程间通信/" itemprop="commentsCount"></span>
+                </a>
+              </span>
+              <!--/noindex-->
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>最近在研究<a href="https://chisel.eecs.berkeley.edu/" target="_blank" rel="noopener">Chisel</a>和高层次的硬件开发框架的项目，发现做仿真这块的方法也是五花八门。有些项目可能自己做了一套仿真的框架，比如<a href="https://github.com/cornell-brg/pymtl" target="_blank" rel="noopener">PyMTL</a>就自己设计了一套仿真的方案，是直接使用Python来实现的，其阐述的目的主要就是为了解决Methodology Gap。最受关注的Chisel的仿真则是在框架的后端直接调用<a href="https://www.veripool.org/projects/verilator/wiki/Intro" target="_blank" rel="noopener">Verilator</a>来进行仿真。不容置疑，目前来说开源仿真的工具中速度最快性能最好的就是Verilator了，虽然其编译的时间可能要稍长。PyMTL的仿真方案速度自然也比不上Verilator，然而其标榜点也并不是速度，也没什么可说的，加之其还使用了自定义的PyPy来进行仿真过程中的JIT加速，也算是一个有趣的亮点，不过这也是后话了。</p>
+<p>Verilator的原理实际上是将Verilog源码编译成单/多线程的C++源代码来进行仿真，其将所需要仿真的dut编译为一个类，dut的IO口则被编译为类成员。Verilator不单单只是简单的把Verilog编译为C++，Verilator还会将代码进行优化，编译成优化过的C++模型来进行仿真。</p>
+<p>Chisel的PeekPokeTester可以调用Verilator作为后端来进行仿真，其仿真的主要原理就是通过进程间的通信来实现的。在这篇文章中，我将会给出一个通过Python来进行跨语言仿真的例子。在此之前，我们首先要清楚Verilator仿真是如何使用的。</p>
+<h2 id="Verilator仿真——编写C-harness"><a href="#Verilator仿真——编写C-harness" class="headerlink" title="Verilator仿真——编写C++ harness"></a>Verilator仿真——编写C++ harness</h2><p>前面已经说过，Verilator的仿真是将Verilog代码编译成等价的C++类模型，那么如何来操纵这个C++类模型来达到使用者所需要的仿真过程？首先，假设我们写了一个简单的译码器：</p>
+<figure class="highlight verilog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Decoder.v</span></span><br><span class="line"><span class="keyword">module</span> Decoder(</span><br><span class="line">    <span class="keyword">input</span> reset,</span><br><span class="line">    <span class="keyword">input</span> [<span class="number">2</span>:<span class="number">0</span>] S,</span><br><span class="line">    <span class="keyword">output</span> [<span class="number">7</span>:<span class="number">0</span>] out</span><br><span class="line">);</span><br><span class="line">    <span class="keyword">always</span> @*</span><br><span class="line">    <span class="keyword">begin</span></span><br><span class="line">        <span class="keyword">if</span>(reset == <span class="number">1'b1</span>)</span><br><span class="line">            out = <span class="number">8'b00000000</span>;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        <span class="keyword">begin</span></span><br><span class="line">            <span class="keyword">case</span>(S)</span><br><span class="line">                <span class="number">3'b000</span>: out = <span class="number">8'b00000001</span>;</span><br><span class="line">                <span class="number">3'b001</span>: out = <span class="number">8'b00000010</span>;</span><br><span class="line">                <span class="number">3'b010</span>: out = <span class="number">8'b00000100</span>;</span><br><span class="line">                <span class="number">3'b011</span>: out = <span class="number">8'b00001000</span>;</span><br><span class="line">                <span class="number">3'b100</span>: out = <span class="number">8'b00010000</span>;</span><br><span class="line">                <span class="number">3'b101</span>: out = <span class="number">8'b00100000</span>;</span><br><span class="line">                <span class="number">3'b110</span>: out = <span class="number">8'b01000000</span>;</span><br><span class="line">                <span class="number">3'b111</span>: out = <span class="number">8'b10000000</span>;</span><br><span class="line">            <span class="keyword">endcase</span></span><br><span class="line">        <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line"><span class="keyword">endmodule</span></span><br></pre></td></tr></table></figure>
+
+<p>通过调用Verilator，可以编译为等价的C++类模型：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># --cc 后跟所需要编译的verilog源代码文件</span></span><br><span class="line"><span class="comment"># --trace 添加生成.vcd波形文件的功能</span></span><br><span class="line"><span class="comment"># 需要注意的是，模块名称必须要和文件名称一致</span></span><br><span class="line">$ verilator --cc Decoder.v --trace</span><br></pre></td></tr></table></figure>
+
+<p>执行后将会在当前目录生成一个<code>obj_dir</code>的文件夹，里面含有一堆编译得到的头文件和C++源文件，这个在我们书写C++ harness的时候有帮助。</p>
+<h3 id="C-harness"><a href="#C-harness" class="headerlink" title="C++ harness"></a>C++ harness</h3><p>C++ harness可以理解为你自己规定仿真过程，并使用Verilator规定的语义来进行表达。书写其有一定的规则，但是只做一些比较基本的仿真，所需要了解的并不多，如下：</p>
+<ol>
+<li><p>包含Verilator核心头文件：<code>verilated.h</code>。如果要加上生成<code>.vcd</code>波形文件的支持，还需要包含<code>verilated_vcd_c.h</code>。同时将需要进行仿真的Verilog代码编译得到的头文件包含进来，如上述的译码器则需要包含头文件<code>VDecoder.h</code>。</p>
+</li>
+<li><p>初始化模块对象以及波性文件对象，如上例子分别对应<code>VDecoder</code>以及<code>VerilatedVcdC</code>对象。并对Verilator做适当的初始化工作。</p>
+</li>
+<li><p>编写仿真流程，其核心则是dut顶层对象的<code>eval()</code>方法。</p>
+</li>
+<li><p>清理工作，包括指针指向空间释放以及文件流关闭等工作。</p>
+</li>
+</ol>
+<p>下面是一个对上述译码器进行仿真的C++ harness的例子：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Decoder-harness.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;verilated.h&gt;          // 核心头文件</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;verilated_vcd_c.h&gt;    // 波形生成头文件</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;fstream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">"VDecoder.h"</span>           <span class="comment">// 译码器模块类</span></span></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> <span class="built_in">std</span>;</span><br><span class="line"></span><br><span class="line">VDecoder* top;                  <span class="comment">// 顶层dut对象指针</span></span><br><span class="line">VerilatedVcdC* tfp;             <span class="comment">// 波形生成对象指针</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">vluint64_t</span> main_time = <span class="number">0</span>;           <span class="comment">// 仿真时间戳</span></span><br><span class="line"><span class="keyword">const</span> <span class="keyword">vluint64_t</span> sim_time = <span class="number">1024</span>;   <span class="comment">// 最大仿真时间戳</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> **argv)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// 一些初始化工作</span></span><br><span class="line">    Verilated::commandArgs(argc, argv);</span><br><span class="line">    Verilated::traceEverOn(<span class="literal">true</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 为对象分配内存空间</span></span><br><span class="line">    top = <span class="keyword">new</span> VDecoder;</span><br><span class="line">    tfp = <span class="keyword">new</span> VerilatedVcdC;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// tfp初始化工作</span></span><br><span class="line">    top-&gt;trace(tfp, <span class="number">99</span>);</span><br><span class="line">    tfp-&gt;open(<span class="string">"Decoder.vcd"</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">int</span> count = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span>(!Verilated::gotFinish() &amp;&amp; main_time &lt; sim_time)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 仿真过程</span></span><br><span class="line">        top-&gt;reset = <span class="number">0</span>;</span><br><span class="line">        top-&gt;S = count;         <span class="comment">// 模块S输出递增</span></span><br><span class="line">        top-&gt;eval();            <span class="comment">// 仿真时间步进</span></span><br><span class="line">        tfp-&gt;dump(main_time);   <span class="comment">// 波形文件写入步进</span></span><br><span class="line">        count++;</span><br><span class="line">        main_time++;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 清理工作</span></span><br><span class="line">    tfp-&gt;close();</span><br><span class="line">    <span class="keyword">delete</span> top;</span><br><span class="line">    <span class="keyword">delete</span> tfp;</span><br><span class="line">    <span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>C++ harness写完后，执行指令并编译成一个可执行文件：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ verilator --cc Decoder.v --trace --exe Decoder-harness.cpp</span><br><span class="line">$ make -j -C ./obj_dir -f VDecoder.mk VDecoder</span><br></pre></td></tr></table></figure>
+
+<p>在<code>obj_dir</code>目录下生成一个VDecoder的可执行文件，执行后即可生成所需要的<code>.vcd</code>波形文件。</p>
+<h2 id="跨语言Verilator仿真"><a href="#跨语言Verilator仿真" class="headerlink" title="跨语言Verilator仿真"></a>跨语言Verilator仿真</h2><p>通过上面的描述，实际上我们可以很自然的想到如何在别的语言中调用Verilator来做实时仿真的工作，这实际上就涉及到了使用进程间通信的问题。上面已经提到了，Verilator会将Verilog代码编译成特定的模块类，而模块的IO口就是模块类中的数据成员，在每一步的仿真步进当中，都可以获取模块类属性的值来得到当前模块IO的取值。在前端程序中（这里是Python）发送信号给Verilator仿真程序，指定其动作（输入、输出、开始、结束、步进等）来进行跨语言调用Verilator进行仿真。</p>
+<p>C++做进程间通信的方法非常多，信号、管道、共享内存等等。但是要考虑一种Python与C++通用的方法，我最后是使用了两者都有的文件映射内存的功能<code>mmap</code>，来作为一个管道（pipe）。我一共使用了3个管道，分别是<code>in.dat</code>、<code>out.dat</code>以及<code>sig.dat</code>，分别对应仿真程序的输入、输出以及信号管道。</p>
+<h3 id="C-mmap"><a href="#C-mmap" class="headerlink" title="C++ mmap"></a>C++ mmap</h3><p>C++使用memory mapping功能需要包含库文件<code>sys/mman.h</code>（注意这个是Linux特有的）。创建mmap的函数文档如下：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> *<span class="title">mmap</span><span class="params">(<span class="keyword">void</span> *start, <span class="keyword">size_t</span> length, <span class="keyword">int</span> prot, <span class="keyword">int</span> flags, <span class="keyword">int</span> fd, <span class="keyword">off_t</span> offset)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p>参数：</p>
+<ul>
+<li>start: 映射区开始的地址。若为NULL，则会自动分配。</li>
+<li>length: 内存段的大小。</li>
+<li>prot: 设置内存段访问的权限。一般情况下选取<code>PROT_READ | PROT_WRITE</code>即可<ul>
+<li>PROT_READ:允许读该内存段</li>
+<li>PROT_WRITE:允许写该内存段</li>
+<li>PROT_EXEC:允许执行该内存段</li>
+<li>PROT_NONE:不能访问</li>
+</ul>
+</li>
+<li>flags: 控制程序对内存段的改变所造成的影响。一般情况下使用<code>MAP_SHARED</code><ul>
+<li>MAP_PRIVATE: 内存段私有，对它的修改值对本进程有效</li>
+<li>MAP_SHARED: 把对该内存段的修改保存到磁盘文件中</li>
+<li>MAP_FIXED: 该内存段必须位于addr指定的地址处</li>
+</ul>
+</li>
+<li>fd: 打开的文件描述符</li>
+<li>off: 用以改变经共享内存段访问的文件中数据的起始偏移值</li>
+</ul>
+<p>创建mmap的方式很简单，调用上述函数即可。然而实际上这里有很多坑，首先length的大小要是系统内存分页大小的整数倍，这个可以通过<code>getpagesize()</code>来获取。还有就是打开的文件描述符也需要使用<code>ftruncate()</code>函数来将文件的大小截取为映射到内存的大小，否则就会Bus Error。一个完整的mmap初始化过程如下：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> fd = open(<span class="string">"file.dat"</span>, O_RDWR | O_CREAT, <span class="number">00777</span>);</span><br><span class="line"><span class="keyword">int</span> psize = getpagesize();</span><br><span class="line">ftruncate(fd, psize);</span><br><span class="line"><span class="keyword">int</span> *mm = (<span class="keyword">int</span>*)mmap(<span class="literal">NULL</span>, psize, PROT_WRITE | PROT_READ, MAP_SHARED, fd, <span class="number">0</span>);</span><br></pre></td></tr></table></figure>
+
+<p>接下来，你就可以将这个文件完全当做一个内存空间来看待，比如使用<code>mm[0]</code>、<code>mm[1]</code>等方法来访问这个内存空间中不同地址的数据（当然注意不要越界）。</p>
+<p>最后是<code>munmap()</code>函数，它会关闭文件的映射，并将对应内存空间中的内容写回到文件当中：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">munmap</span><span class="params">(<span class="keyword">void</span> *start, <span class="keyword">size_t</span> length)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p>其中<code>start</code>为内存映射的起始地址，<code>length</code>为内存映射的空间大小。</p>
+<h3 id="Python-mmap"><a href="#Python-mmap" class="headerlink" title="Python mmap"></a>Python mmap</h3><p>相较之下，python使用mmap要简单很多，只需要导入mmap模块即可：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">psize = <span class="number">4096</span></span><br><span class="line">mm = mmap.mmap(os.open(<span class="string">"file.dat"</span>, os.O_RDWR), psize)</span><br></pre></td></tr></table></figure>
+
+<p>此时mm可以使用文件流的方法，比如使用<code>write()</code>来往文件中写入数据，需要注意的是数据必须是bytes类型的对象，使用<code>read()</code>来读取指定大小的数据（单位为字节）。</p>
+<p>在映射完成后，调用<code>close()</code>方法即可：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mm.close()</span><br></pre></td></tr></table></figure>
+
+<h3 id="进程间通信"><a href="#进程间通信" class="headerlink" title="进程间通信"></a>进程间通信</h3><p>进程间通信所使用的就是<code>sig.dat</code>这条管道，可以在双方规定信号的值。例如等待<code>WAIT</code>为0，输入到达<code>DIN</code>为1等等。同时双方还要协商好一个数据单元的大小（32位的int还是64位？）。在我给出的例子中，C++仿真程序端的信号同步例子如下：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span>(<span class="number">1</span>)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">while</span> (*sig == WAIT);   <span class="comment">// 轮询</span></span><br><span class="line">    <span class="keyword">if</span> (*sig == TERM)</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">switch</span> (*sig)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">case</span> DIN: input_value(in); <span class="keyword">break</span>;   <span class="comment">// 从in.dat中获取数据</span></span><br><span class="line">        <span class="keyword">case</span> DOUT: output_value(out); <span class="keyword">break</span>;    <span class="comment">// 写数据到out.dat</span></span><br><span class="line">        <span class="keyword">case</span> STEP: step(); <span class="keyword">break</span>;   <span class="comment">// 仿真步进</span></span><br><span class="line">        <span class="keyword">default</span>:</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    *sig = WAIT;    <span class="comment">// 等待下一个信号到来</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在Python中，等待信号则为：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">wait_signal</span><span class="params">()</span>:</span></span><br><span class="line">    signal = read_data(mm_sig)</span><br><span class="line">    <span class="keyword">while</span> signal != WAIT:</span><br><span class="line">        signal = read_data(mm_sig)</span><br></pre></td></tr></table></figure>
+
+<p>至此，信号同步的协定完成，就可以双方通过文件映射的共享内存空间进行通信了。</p>
+<p>上面所使用的例子均在仓库 <a href="https://github.com/Groupsun/Verilator_Simple_Usage" target="_blank" rel="noopener">https://github.com/Groupsun/Verilator_Simple_Usage</a> 中的<code>/pipe</code>文件夹中提供。可以参照ALU的例子：</p>
+<ul>
+<li>ALU.v: Verilog源码</li>
+<li>Sim_ALU.cpp: C++ harness</li>
+<li>ALU_wrapper.py: python调用 </li>
+</ul>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Verilator/" rel="tag"># Verilator</a>
+          
+            <a href="/tags/Simulation/" rel="tag"># Simulation</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/07/06/ISA-Design-101/" rel="next" title="ISA Design 101">
+                <i class="fa fa-chevron-left"></i> ISA Design 101
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="hypercomments_widget"></div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpg" alt="SunnyChen">
+            
+              <p class="site-author-name" itemprop="name">SunnyChen</p>
+              <p class="site-description motion-element" itemprop="description">Silent place</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-name">categories</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-name">tags</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+            <div class="links-of-author motion-element">
+                
+                  <span class="links-of-author-item">
+                    <a href="https://github.com/Groupsun" target="_blank" title="GitHub">
+                      
+                        <i class="fa fa-fw fa-github"></i>GitHub</a>
+                  </span>
+                
+                  <span class="links-of-author-item">
+                    <a href="mailto:cptgroupsun@gmail.com" target="_blank" title="E-Mail">
+                      
+                        <i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                  </span>
+                
+                  <span class="links-of-author-item">
+                    <a href="https://twitter.com/CptSunnyChen" target="_blank" title="Twitter">
+                      
+                        <i class="fa fa-fw fa-twitter"></i>Twitter</a>
+                  </span>
+                
+                  <span class="links-of-author-item">
+                    <a href="https://www.facebook.com/profile.php?id=100013729483257" target="_blank" title="FB Page">
+                      
+                        <i class="fa fa-fw fa-facebook"></i>FB Page</a>
+                  </span>
+                
+            </div>
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Verilator仿真——编写C-harness"><span class="nav-number">1.</span> <span class="nav-text">Verilator仿真——编写C++ harness</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#C-harness"><span class="nav-number">1.1.</span> <span class="nav-text">C++ harness</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#跨语言Verilator仿真"><span class="nav-number">2.</span> <span class="nav-text">跨语言Verilator仿真</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#C-mmap"><span class="nav-number">2.1.</span> <span class="nav-text">C++ mmap</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Python-mmap"><span class="nav-number">2.2.</span> <span class="nav-text">Python mmap</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#进程间通信"><span class="nav-number">2.3.</span> <span class="nav-text">进程间通信</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; 2018 &mdash; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">SunnyChen</span>
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a></div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+		<script type="text/javascript">
+		_hcwp = window._hcwp || [];
+
+		_hcwp.push({widget:"Bloggerstream", widget_id: 106070, selector:".hc-comment-count", label: "{\%COUNT%\}" });
+
+		
+		_hcwp.push({widget:"Stream", widget_id: 106070, xid: "2019/07/25/跨语言的Verilator仿真：使用进程间通信/"});
+		
+
+		(function() {
+		if("HC_LOAD_INIT" in window)return;
+		HC_LOAD_INIT = true;
+		var lang = (navigator.language || navigator.systemLanguage || navigator.userLanguage || "en").substr(0, 2).toLowerCase();
+		var hcc = document.createElement("script"); hcc.type = "text/javascript"; hcc.async = true;
+		hcc.src = ("https:" == document.location.protocol ? "https" : "http")+"://w.hypercomments.com/widget/hc/106070/"+lang+"/widget.js";
+		var s = document.getElementsByTagName("script")[0];
+		s.parentNode.insertBefore(hcc, s.nextSibling);
+		})();
+		</script>
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  <script type="text/javascript">
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url);
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+</body>
+</html>
